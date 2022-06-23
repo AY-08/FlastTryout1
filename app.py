@@ -25,7 +25,7 @@ class User(db.Model):
 def create_user():
     data = request.get_json()
     if not data:
-        return make_response(jsonify("Check the fields entered"))
+        return make_response(jsonify({"Message":"Check the fields entered"}),404)
 
     userid = data['userid']
     username = data['username']
@@ -37,7 +37,7 @@ def create_user():
     db.session.commit()
     db.session.close()
 
-    return make_response(jsonify("Created sucessfully",200))
+    return make_response(jsonify({"Message":"Created sucessfully"},200))
 
     
 @app.route('/read', methods=['GET'])
@@ -45,7 +45,7 @@ def readall_users():
     data= User.query.all()
     print(data)
     if not data :
-        return make_response(jsonify("List of users empty"))
+        return make_response(jsonify({"Message":"List of users empty"}),404)
     userlist =[]    
     for user in data:
         print("user",type(user))
@@ -62,17 +62,41 @@ def readall_users():
     return make_response(jsonify(userlist))
 
 
-@app.config('/update/<int:userid>', methods="PUT")
+@app.route('/update/<int:userid>', methods=["PUT"])
 def update_username(userid):
     #userid = request.args.get('userid')
-    data = db.session.query(User).filter(User.userid==userid).all()
-    if not data:
+    upatedata = request.get_json()
+    usernameupdate = upatedata['username']
+    print("put userid",userid)
+    print("put json update data",upatedata)
+    querydata = db.session.query(User).filter(User.userid==userid).all()
+    
+    print("put data ",querydata)
+    if not querydata:
         return make_response(jsonify({"Message":"Check your userid"},404))
+    for data in querydata:
+        setattr(data,"username",usernameupdate)
+    db.session.commit()
+    
+    return make_response(jsonify({"Message":"Put data updated sucessfully"}),200)
+
     
 
+
+@app.route('/delete/<int:id>', methods=['DELETE'])
+def deleteuser(id):
+    querydata = db.session.query(User).filter(User.userid==id).all()
+    print("querydata",querydata)
+    if not querydata:
+        return make_response(jsonify({"Message":"Check your id"}),404)
+
+    for user in querydata:
+        print("user",user)
+        db.session.delete(user)
     
+    db.session.commit()
 
-
+    return make_response(jsonify({"Message":"Data has been deleted"}),200)    
 
 
 
