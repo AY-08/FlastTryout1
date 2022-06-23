@@ -2,7 +2,7 @@ from crypt import methods
 from enum import unique
 from flask import Flask,request,make_response,jsonify
 from flask_sqlalchemy import SQLAlchemy
-import sqlite3
+from werkzeug.security import generate_password_hash,check_password_hash
 
 
 app = Flask(__name__)
@@ -14,8 +14,8 @@ db = SQLAlchemy(app)
 
 
 class User(db.Model):
-    userid=db.Column(db.Integer, primary_key= True, unique=True)
-    username = db.Column(db.String,primary_key= True)
+    id = db.Column(db.Integer, primary_key= True)
+    username = db.Column(db.String, unique=True)
     useremail = db.Column(db.String)
     password = db.Column(db.String)
 
@@ -24,20 +24,22 @@ class User(db.Model):
 @app.route('/create',methods=['POST'])
 def create_user():
     data = request.get_json()
+    print("data request",data)
     if not data:
         return make_response(jsonify({"Message":"Check the fields entered"}),404)
-
-    userid = data['userid']
     username = data['username']
     useremail= data['useremail']
-    password = data['password']
-    user = User(userid=userid,username=username,useremail=useremail,password=password)
+    password = generate_password_hash(data['password'],method='sha256')
+
+
+    user = User(username=username,useremail=useremail,password=password)
 
     db.session.add(user)
     db.session.commit()
     db.session.close()
 
-    return make_response(jsonify({"Message":"Created sucessfully"},200))
+    # return make_response(jsonify({"Message":"Created sucessfully"},200))
+    return make_response(jsonify({"Created sucessfully": data},200))
 
     
 @app.route('/read', methods=['GET'])
@@ -50,7 +52,7 @@ def readall_users():
     for user in data:
         print("user",type(user))
         userlist.append({
-            "userid":user.userid,
+            
             "username":user.username,
             "useremail":user.useremail,
             "password":user.password
@@ -62,18 +64,18 @@ def readall_users():
     return make_response(jsonify(userlist))
 
 
-@app.route('/update/<int:userid>', methods=["PUT"])
-def update_username(userid):
-    #userid = request.args.get('userid')
+@app.route('/update/<int:id>', methods=["PUT"])
+def update_username(id):
+ 
     upatedata = request.get_json()
     usernameupdate = upatedata['username']
-    print("put userid",userid)
+    print("put userid",id)
     print("put json update data",upatedata)
-    querydata = db.session.query(User).filter(User.userid==userid).all()
+    querydata = db.session.query(User).filter(User.id==id).all()
     
     print("put data ",querydata)
     if not querydata:
-        return make_response(jsonify({"Message":"Check your userid"},404))
+        return make_response(jsonify({"Message":"Check your userid"},400))
     for data in querydata:
         setattr(data,"username",usernameupdate)
     db.session.commit()
@@ -85,10 +87,10 @@ def update_username(userid):
 
 @app.route('/delete/<int:id>', methods=['DELETE'])
 def deleteuser(id):
-    querydata = db.session.query(User).filter(User.userid==id).all()
+    querydata = db.session.query(User).filter(User.id==id).all()
     print("querydata",querydata)
     if not querydata:
-        return make_response(jsonify({"Message":"Check your id"}),404)
+        return make_response(jsonify({"Message":"Check your user id"}),204)
 
     for user in querydata:
         print("user",user)
